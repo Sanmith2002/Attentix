@@ -8,15 +8,11 @@ mp_drawing = mp.solutions.drawing_utils
 
 cap = cv2.VideoCapture(0)
 
-# Landmark indices
+# Landmark indices for face direction
 LEFT_EYE = [33, 133]
 RIGHT_EYE = [362, 263]
 CHIN = 152
 NOSE = 1
-
-# Gaze landmarks
-left_eye_full = [33, 133, 159, 145]
-right_eye_full = [362, 263, 386, 374]
 
 def get_face_direction(landmarks, w, h):
     left_eye = np.mean([(landmarks[i].x * w, landmarks[i].y * h) for i in LEFT_EYE], axis=0)
@@ -41,25 +37,6 @@ def get_face_direction(landmarks, w, h):
     else:
         return "Center"
 
-def get_gaze_direction(landmarks, w, h):
-    left_eye_outer = landmarks[33]
-    left_eye_inner = landmarks[133]
-    right_eye_outer = landmarks[362]
-    right_eye_inner = landmarks[263]
-
-    left_ratio = (landmarks[133].x - landmarks[33].x)
-    right_ratio = (landmarks[263].x - landmarks[362].x)
-
-    # Use horizontal gaze estimation
-    if left_ratio > 0.04 and right_ratio > 0.04:
-        return "Center"
-    elif left_ratio < 0.03:
-        return "Right"
-    elif right_ratio < 0.03:
-        return "Left"
-    else:
-        return "Unknown"
-
 while cap.isOpened():
     ret, frame = cap.read()
     if not ret:
@@ -73,28 +50,21 @@ while cap.isOpened():
     if results.multi_face_landmarks:
         landmarks = results.multi_face_landmarks[0].landmark
 
-        # Draw mesh
+        # Draw mesh on face
         mp_drawing.draw_landmarks(frame, results.multi_face_landmarks[0], mp_face_mesh.FACEMESH_CONTOURS)
 
-        # Head + Eye
+        # Get face direction
         face_dir = get_face_direction(landmarks, w, h)
-        gaze_dir = get_gaze_direction(landmarks, w, h)
 
-        # Final logic
-        if gaze_dir == "Center":
-            status = f"✅ Focused ({face_dir} face, eyes Center)"
-            color = (0, 255, 0)
-        else:
-            status = f"❌ Distracted ({face_dir} face, eyes {gaze_dir})"
-            color = (0, 0, 255)
-
-        cv2.putText(frame, status, (10, 30), cv2.FONT_HERSHEY_SIMPLEX,
-                    0.8, color, 2)
+        # Show direction on screen
+        cv2.putText(frame, f"Face Direction: {face_dir}", (10, 30),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
     else:
-        cv2.putText(frame, "⏳ No face detected", (10, 30), cv2.FONT_HERSHEY_SIMPLEX,
-                    0.8, (0, 255, 255), 2)
+        cv2.putText(frame, "No face detected", (10, 30),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
 
-    cv2.imshow("W2-03: Attention Detection", frame)
+    cv2.imshow("Face Direction Detector", frame)
+
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
